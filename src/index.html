@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div>
+        <form id="formLogin" onsubmit="handleFormLogin(event)">
+            <input name="cpf" />
+            <input name="password" />
+            <button>Entrar</button>
+        </form>
+    </div>
+    <div>
+        <div id="qrcode"></div>
+    </div>
+    <script src="https://raw.githack.com/davidshimjs/qrcodejs/master/qrcode.min.js"></script>
+    <script>
+        console.log('init');
+
+        function renderQrCode(code) {
+
+            document.getElementById("qrcode").innerHTML = '';
+            new QRCode(document.getElementById("qrcode"), code);
+        }
+
+        function checkAuth() {
+            
+            return fetch('/qrcode-ok/${cpf}').then(response => response.json());
+        }
+
+        function monitorAuth() {
+
+            let count = 1;
+
+            const id = setInterval(() => {
+
+                console.log('checking');
+
+                if (count++ >= 20) {
+                    clearInterval(id);
+                    console.log('falha qrcode');                                
+                    return;
+                }
+
+                checkAuth()
+                    .then(data => {
+
+                        if (data.status === 'OK') {
+                            clearInterval(id);
+                            console.log('ok');
+                            return;
+                        }
+                    })
+                    .catch(erro => console.log(erro));
+
+            }, 1000);
+        }
+
+        function handleFormLogin(e) {
+
+            console.log('ok');
+            e.preventDefault();
+            const form = e.currentTarget;
+
+            const data = `cpf=${encodeURIComponent(form.cpf.value)}&password=${encodeURIComponent(form.password.value)}`;
+
+            fetch('/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+                },
+                body: data
+            })
+                .then(request => request.json())
+                .then(data => {
+
+                    renderQrCode(data.code);
+                    monitorAuth();
+                });            
+        }        
+    </script>
+</body>
+</html>
